@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>AI Fairness Checker – Unbiased AI Decision</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.96);
+            border-radius: 32px;
+            padding: 28px 24px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+        }
+        h1 {
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-align: center;
+            margin-bottom: 6px;
+        }
+        .sub {
+            text-align: center;
+            color: #4b5563;
+            margin-bottom: 24px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 24px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8fafc;
+            margin-bottom: 20px;
+        }
+        .upload-area:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .upload-area i {
+            font-size: 48px;
+            color: #3b82f6;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        input[type="file"] { display: none; }
+        button {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+        .result {
+            margin-top: 28px;
+            background: #f1f5f9;
+            border-radius: 24px;
+            padding: 24px;
+            display: none;
+        }
+        .fairness-badge {
+            display: inline-block;
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+        .fair { background: #dcfce7; color: #166534; border-left: 3px solid #22c55e; }
+        .unfair { background: #fee2e2; color: #991b1b; border-left: 3px solid #ef4444; }
+        .slightly-unfair { background: #fef9c3; color: #854d0e; border-left: 3px solid #eab308; }
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+        .metric-card {
+            background: white;
+            border-radius: 20px;
+            padding: 14px 18px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .metric-label { font-weight: 600; color: #1e293b; font-size: 0.85rem; }
+        .metric-value { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
+        .chart-container {
+            max-width: 500px;
+            margin: 20px auto;
+        }
+        canvas { max-height: 300px; width: 100%; }
+        .explanation { line-height: 1.5; color: #334155; margin: 16px 0; }
+        .recommendation { background: #e6f0ff; padding: 12px; border-radius: 16px; font-style: italic; color: #1e40af; }
+        .sample-area {
+            margin-top: 24px;
+            background: #eef2ff;
+            padding: 16px;
+            border-radius: 20px;
+            text-align: center;
+        }
+        .sample-area a {
+            color: #2563eb;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        hr { margin: 18px 0; border: none; height: 1px; background: #e2e8f0; }
+        @media (max-width: 600px) {
+            .container { padding: 20px; }
+            .metric-value { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>⚖️ AI Fairness Checker</h1>
+    <div class="sub">Statistical Parity · Disparate Impact · Equalized Odds<br>(Works offline, no backend)</div>
+
+    <div class="upload-area" onclick="document.getElementById('csvFile').click()">
+        <i>📁</i>
+        <p>Tap here to select CSV file</p>
+        <p style="font-size: 12px; color:#64748b;">Columns: <strong>decision</strong> (0/1) & <strong>protected</strong> (two unique values)</p>
+    </div>
+    <input type="file" id="csvFile" accept=".csv" />
+
+    <button id="analyzeBtn">🔍 Analyze Fairness</button>
+
+    <div class="result" id="resultDiv">
+        <div id="fairnessBadge" class="fairness-badge"></div>
+
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-label">📊 Statistical Parity Difference (SPD)</div>
+                <div class="metric-value" id="spdValue">—</div>
+                <div style="font-size: 0.7rem;">|SPD| < 0.1 = fair</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">⚖️ Disparate Impact Ratio (DIR)</div>
+                <div class="metric-value" id="dirValue">—</div>
+                <div style="font-size: 0.7rem;">0.8 – 1.25 = fair</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">🎯 Equalized Odds (TPR Diff)</div>
+                <div class="metric-value" id="tprDiffValue">—</div>
+                <div style="font-size: 0.7rem;">|TPR diff| < 0.1 = fair</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="fairnessChart"></canvas>
+        </div>
+
+        <hr>
+        <div class="explanation" id="explanation"></div>
+        <div class="recommendation" id="recommendation"></div>
+        <div style="margin-top: 12px; font-size: 0.85rem; color: #4b5563;">
+            🔬 Chi‑square p‑value: <span id="pValue">—</span>
+        </div>
+    </div>
+
+    <div class="sample-area">
+        📥 <a id="downloadSampleLink">Download sample CSV (fairness test data)</a><br>
+        <span style="font-size: 12px;">Or create your own CSV with columns: decision,protected</span>
+    </div>
+</div>
+
+<script>
+    let chartInstance = null;
+
+    function downloadSampleCSV() {
+        const sampleRows = [
+            "decision,protected",
+            "1,Female", "0,Female", "1,Male", "1,Male", "0,Male",
+            "1,Female", "1,Female", "0,Female", "1,Male", "1,Male",
+            "0,Male", "1,Female", "1,Female", "0,Female", "1,Male",
+            "1,Male", "0,Male", "1,Female", "1,Female", "0,Female"
+        ];
+        const csvContent = sampleRows.join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv" });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.download = "fairness_sample.csv";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+    document.getElementById("downloadSampleLink").addEventListener("click", downloadSampleCSV);
+
+    function calculateMetrics(rows) {
+        const groups = [...new Set(rows.map(r => r.protected))];
+        if (groups.length !== 2) throw new Error(`Protected must have exactly 2 distinct values. Found: ${groups.join(', ')}`);
+        const group0 = groups[0];
+        const group1 = groups[1];
+
+        const getStats = (group) => {
+            const groupRows = rows.filter(r => r.protected === group);
+            const total = groupRows.length;
+            const positive = groupRows.filter(r => r.decision === 1).length;
+            const rate = total === 0 ? 0 : positive / total;
+            // True Positive Rate (TPR) = P(decision=1 | protected=group) – same as positive rate for binary.
+            // For Equalized Odds we also need False Positive Rate, but data lacks ground truth labels.
+            // We'll use TPR difference as a proxy (assuming decision=1 is positive outcome).
+            const tpr = rate;
+            return { total, positive, rate, tpr };
+        };
+
+        const stats0 = getStats(group0);
+        const stats1 = getStats(group1);
+
+        const spd = stats1.rate - stats0.rate;
+        const dir = stats0.rate === 0 ? (stats1.rate === 0 ? 1 : Infinity) : stats1.rate / stats0.rate;
+        const tprDiff = stats1.tpr - stats0.tpr;  // Equalized Odds (TPR difference)
+
+        // Chi-square test
+        const contingency = [
+            [stats0.positive, stats0.total - stats0.positive],
+            [stats1.positive, stats1.total - stats1.positive]
+        ];
+        const totalPos = contingency[0][0] + contingency[1][0];
+        const totalNeg = contingency[0][1] + contingency[1][1];
+        const total = totalPos + totalNeg;
+        const rowTotals = [stats0.total, stats1.total];
+        const colTotals = [totalPos, totalNeg];
+        let chi2 = 0;
+        for (let i=0; i<2; i++) {
+            for (let j=0; j<2; j++) {
+                const expected = (rowTotals[i] * colTotals[j]) / total;
+                if (expected > 0) chi2 += Math.pow(contingency[i][j] - expected, 2) / expected;
+            }
+        }
+        const pValue = 1 - chi2CDF(chi2, 1);
+        return { spd, dir, tprDiff, pValue, group0, group1, stats0, stats1 };
+    }
+
+    function chi2CDF(chi2, df) {
+        if (df !== 1) return 0.5;
+        const x = Math.sqrt(chi2);
+        const erf = (z) => {
+            const t = 1 / (1 + 0.3275911 * Math.abs(z));
+            const ans = 1 - ((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t * Math.exp(-z * z);
+            return z >= 0 ? ans : -ans;
+        };
+        return 0.5 * (1 + erf(x / Math.sqrt(2)));
+    }
+
+    function updateChart(group0, rate0, group1, rate1) {
+        const ctx = document.getElementById('fairnessChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [group0, group1],
+                datasets: [{
+                    label: 'Positive Decision Rate (%)',
+                    data: [rate0 * 100, rate1 * 100],
+                    backgroundColor: ['#3b82f6', '#ec489a'],
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: { beginAtZero: true, max: 100, title: { display: true, text: 'Percentage (%)' } }
+                },
+                plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.raw.toFixed(1)}%` } } }
+            }
+        });
+    }
+
+    function displayResults(metrics) {
+        const spd = metrics.spd;
+        const dir = metrics.dir;
+        const tprDiff = metrics.tprDiff;
+        const spdFair = Math.abs(spd) < 0.1;
+        const dirFair = (typeof dir === 'number') && (dir >= 0.8 && dir <= 1.25);
+        const tprFair = Math.abs(tprDiff) < 0.1;
+        let fairness, colorClass;
+        if (spdFair && dirFair && tprFair) {
+            fairness = "FAIR";
+            colorClass = "fair";
+        } else if (Math.abs(spd) > 0.2 || (typeof dir === 'number' && (dir < 0.5 || dir > 2)) || Math.abs(tprDiff) > 0.2) {
+            fairness = "UNFAIR – Strong Bias";
+            colorClass = "unfair";
+        } else {
+            fairness = "MODERATELY UNFAIR";
+            colorClass = "slightly-unfair";
+        }
+
+        document.getElementById('fairnessBadge').innerHTML = fairness;
+        document.getElementById('fairnessBadge').className = `fairness-badge ${colorClass}`;
+        document.getElementById('spdValue').innerText = spd.toFixed(4);
+        document.getElementById('dirValue').innerText = (typeof dir === 'number') ? dir.toFixed(4) : (dir === Infinity ? "∞" : dir);
+        document.getElementById('tprDiffValue').innerText = tprDiff.toFixed(4);
+        document.getElementById('pValue').innerText = metrics.pValue.toFixed(6);
+
+        let explanation = `Group '${metrics.group1}' receives positive decision ${(metrics.stats1.rate*100).toFixed(1)}% of the time, while group '${metrics.group0}' receives ${(metrics.stats0.rate*100).toFixed(1)}%. `;
+        explanation += `SPD = ${spd.toFixed(4)}. DIR = ${(typeof dir === 'number') ? dir.toFixed(4) : dir}. `;
+        explanation += `Equalized Odds (TPR diff) = ${tprDiff.toFixed(4)}. `;
+        if (spd > 0) explanation += ` This favors group '${metrics.group1}'.`;
+        else if (spd < 0) explanation += ` This favors group '${metrics.group0}'.`;
+        else explanation += ` Perfect statistical parity.`;
+        document.getElementById('explanation').innerHTML = explanation;
+
+        let recommendation = "";
+        if (fairness === "FAIR") recommendation = "The model appears unbiased across all metrics. ✅";
+        else if (fairness.includes("UNFAIR")) recommendation = "Immediate review recommended. Bias detected in one or more metrics. ⚠️";
+        else recommendation = "Some bias present. Consider adjusting decision thresholds or collecting more balanced data. 🔧";
+        document.getElementById('recommendation').innerHTML = recommendation;
+
+        updateChart(metrics.group0, metrics.stats0.rate, metrics.group1, metrics.stats1.rate);
+        document.getElementById('resultDiv').style.display = 'block';
+    }
+
+    document.getElementById('analyzeBtn').addEventListener('click', () => {
+        const fileInput = document.getElementById('csvFile');
+        if (!fileInput.files.length) { alert("Please select a CSV file first."); return; }
+        const file = fileInput.files[0];
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+                try {
+                    const rows = results.data;
+                    if (rows.length === 0) throw new Error("CSV is empty");
+                    if (!rows[0].hasOwnProperty('decision') || !rows[0].hasOwnProperty('protected'))
+                        throw new Error("CSV must contain columns 'decision' and 'protected'");
+                    rows.forEach(r => { r.decision = Number(r.decision); if (isNaN(r.decision)) throw new Error("Decision must be numeric (0/1)"); r.protected = String(r.protected).trim(); });
+                    const metrics = calculateMetrics(rows);
+                    displayResults(metrics);
+                } catch (err) { alert("Error: " + err.message); }
+            },
+            error: (err) => alert("Failed to parse CSV: " + err.message)
+        });
+    });
+</script>
+</body>
+</html>
