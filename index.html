@@ -2,257 +2,211 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>AI Fairness Checker + Gemini Explainability</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Fairness Checker (Mock Gemini)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
-        /* Same styling as before – compact and clean */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); min-height: 100vh; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; background: rgba(255,255,255,0.96); border-radius: 32px; padding: 28px 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
-        h1 { font-size: 1.8rem; background: linear-gradient(135deg, #1e3c72, #2a5298); -webkit-background-clip: text; background-clip: text; color: transparent; text-align: center; margin-bottom: 6px; }
-        .sub { text-align: center; color: #4b5563; margin-bottom: 24px; font-weight: 500; font-size: 0.9rem; }
-        .upload-area { border: 2px dashed #cbd5e1; border-radius: 24px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.3s; background: #f8fafc; margin-bottom: 20px; }
-        .upload-area:hover { border-color: #3b82f6; background: #eff6ff; }
-        .upload-area i { font-size: 48px; color: #3b82f6; display: inline-block; margin-bottom: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; margin-bottom: 10px; }
+        .sub { text-align: center; color: #666; margin-bottom: 30px; }
+        .upload-area { border: 2px dashed #ccc; border-radius: 15px; padding: 40px; text-align: center; cursor: pointer; background: #f9f9f9; margin-bottom: 20px; }
+        .upload-area:hover { border-color: #667eea; background: #f0f0ff; }
         input[type="file"] { display: none; }
-        button { background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; border: none; padding: 14px 20px; border-radius: 40px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; transition: all 0.2s; margin-top: 8px; }
-        button:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
-        .result { margin-top: 28px; background: #f1f5f9; border-radius: 24px; padding: 24px; display: none; }
-        .fairness-badge { display: inline-block; padding: 6px 18px; border-radius: 40px; font-weight: 700; font-size: 0.9rem; margin-bottom: 20px; }
-        .fair { background: #dcfce7; color: #166534; border-left: 3px solid #22c55e; }
-        .unfair { background: #fee2e2; color: #991b1b; border-left: 3px solid #ef4444; }
-        .slightly-unfair { background: #fef9c3; color: #854d0e; border-left: 3px solid #eab308; }
-        .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 20px 0; }
-        .metric-card { background: white; border-radius: 20px; padding: 14px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: center; }
-        .metric-label { font-weight: 600; color: #1e293b; font-size: 0.85rem; }
-        .metric-value { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
-        .chart-container { max-width: 500px; margin: 20px auto; }
-        canvas { max-height: 300px; width: 100%; }
-        .explanation { line-height: 1.5; color: #334155; margin: 16px 0; }
-        .recommendation { background: #e6f0ff; padding: 12px; border-radius: 16px; font-style: italic; color: #1e40af; }
-        .gemini-section { margin-top: 24px; border-top: 1px solid #ddd; padding-top: 20px; }
-        .gemini-chat { background: white; border-radius: 16px; padding: 12px; max-height: 250px; overflow-y: auto; margin-top: 12px; display: none; }
-        .chat-message { margin: 8px 0; padding: 8px 12px; border-radius: 16px; max-width: 85%; }
-        .user-msg { background: #e9ecef; margin-left: auto; text-align: right; }
-        .ai-msg { background: #4285f4; color: white; }
-        .gemini-input { display: flex; gap: 8px; margin-top: 12px; display: none; }
-        .gemini-input input { flex: 1; padding: 10px; border-radius: 40px; border: 1px solid #ccc; }
-        .sample-area { margin-top: 24px; background: #eef2ff; padding: 16px; border-radius: 20px; text-align: center; }
-        hr { margin: 18px 0; border: none; height: 1px; background: #e2e8f0; }
-        @media (max-width: 600px) { .container { padding: 20px; } .metric-value { font-size: 1.2rem; } }
+        button { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 12px 24px; border-radius: 30px; font-size: 16px; cursor: pointer; width: 100%; margin-top: 10px; }
+        .result { margin-top: 30px; background: #f8f9fa; border-radius: 15px; padding: 20px; display: none; }
+        .fairness-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; margin-bottom: 15px; }
+        .fair { background: #d4edda; color: #155724; }
+        .unfair { background: #f8d7da; color: #721c24; }
+        .slightly-unfair { background: #fff3cd; color: #856404; }
+        .metric-card { background: white; border-radius: 10px; padding: 15px; margin: 10px 0; display: flex; justify-content: space-between; }
+        .chart-container { max-width: 400px; margin: 20px auto; }
+        .gemini-section { margin-top: 20px; border-top: 1px solid #ddd; padding-top: 20px; }
+        .chat-messages { background: white; border-radius: 10px; padding: 15px; max-height: 300px; overflow-y: auto; margin-top: 10px; }
+        .user-msg { background: #e9ecef; padding: 8px 12px; border-radius: 15px; margin: 5px 0; text-align: right; }
+        .ai-msg { background: #667eea; color: white; padding: 8px 12px; border-radius: 15px; margin: 5px 0; }
+        .chat-input { display: flex; gap: 10px; margin-top: 10px; }
+        .chat-input input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ccc; }
+        .sample-link { margin-top: 20px; text-align: center; }
+        .sample-link a { color: #667eea; cursor: pointer; text-decoration: underline; }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>⚖️ AI Fairness Checker</h1>
-    <div class="sub">Statistical Parity · Disparate Impact · Equalized Odds<br>+ Gemini AI Explainability</div>
+    <div class="sub">Statistical Parity · Disparate Impact · Equalized Odds<br>Mock Gemini AI for Demo</div>
 
     <div class="upload-area" onclick="document.getElementById('csvFile').click()">
-        <i>📁</i>
-        <p>Tap here to select CSV file</p>
-        <p style="font-size: 12px; color:#64748b;">Columns: <strong>decision</strong> (0/1) & <strong>protected</strong> (two unique values)</p>
+        📁 Click to upload CSV (columns: decision, protected)
     </div>
-    <input type="file" id="csvFile" accept=".csv" />
-
-    <button id="analyzeBtn">🔍 Analyze Fairness</button>
+    <input type="file" id="csvFile" accept=".csv">
+    <button id="analyzeBtn">Analyze Fairness</button>
+    <div class="sample-link"><a id="downloadSample">Download sample CSV</a></div>
 
     <div class="result" id="resultDiv">
         <div id="fairnessBadge" class="fairness-badge"></div>
-
-        <div class="metric-grid">
-            <div class="metric-card"><div class="metric-label">📊 SPD</div><div class="metric-value" id="spdValue">—</div><div style="font-size:0.7rem;">|SPD| < 0.1 = fair</div></div>
-            <div class="metric-card"><div class="metric-label">⚖️ DIR</div><div class="metric-value" id="dirValue">—</div><div style="font-size:0.7rem;">0.8 – 1.25 = fair</div></div>
-            <div class="metric-card"><div class="metric-label">🎯 TPR Diff</div><div class="metric-value" id="tprDiffValue">—</div><div style="font-size:0.7rem;">|diff| < 0.1 = fair</div></div>
-        </div>
-
+        <div class="metric-card"><strong>SPD:</strong> <span id="spdValue">-</span></div>
+        <div class="metric-card"><strong>DIR:</strong> <span id="dirValue">-</span></div>
+        <div class="metric-card"><strong>TPR Diff:</strong> <span id="tprDiffValue">-</span></div>
+        <div class="metric-card"><strong>p-value:</strong> <span id="pValue">-</span></div>
         <div class="chart-container"><canvas id="fairnessChart"></canvas></div>
-        <hr>
-        <div class="explanation" id="explanation"></div>
-        <div class="recommendation" id="recommendation"></div>
-        <div style="margin-top:12px; font-size:0.85rem;">🔬 Chi‑square p‑value: <span id="pValue">—</span></div>
+        <div id="explanation"></div>
 
         <div class="gemini-section">
-            <button id="geminiBtn" style="background:#4285f4; width:auto;">💬 Ask Gemini AI</button>
-            <div id="geminiChat" class="gemini-chat"></div>
-            <div id="geminiInput" class="gemini-input">
-                <input type="text" id="geminiQuestion" placeholder="Ask a follow-up question...">
-                <button id="geminiSend" style="background:#34a853; width:auto; margin:0;">Send</button>
+            <button id="geminiBtn">💬 Ask Gemini AI (Mock)</button>
+            <div id="chatMessages" class="chat-messages" style="display:none;"></div>
+            <div class="chat-input" style="display:none;">
+                <input type="text" id="chatInput" placeholder="Ask a follow-up...">
+                <button id="sendBtn">Send</button>
             </div>
         </div>
-    </div>
-
-    <div class="sample-area">
-        📥 <a id="downloadSampleLink">Download sample CSV</a><br>
-        <span style="font-size:12px;">Columns: decision (0/1), protected (two unique values)</span>
     </div>
 </div>
 
 <script>
-    
-    const BACKEND_URL = 'const BACKEND_URL = 'https://gemini-proxy-2d6a.onrender.com';'; 
-
     let chartInstance = null;
     let currentMetrics = null;
 
     // Sample CSV download
-    document.getElementById("downloadSampleLink").addEventListener("click", () => {
-        const rows = ["decision,protected","1,Female","0,Female","1,Male","1,Male","0,Male","1,Female","1,Female","0,Female","1,Male","1,Male","0,Male","1,Female","1,Female","0,Female","1,Male","1,Male","0,Male","1,Female","1,Female","0,Female"];
-        const blob = new Blob([rows.join("\n")], {type:"text/csv"});
-        const link = document.createElement("a");
+    document.getElementById('downloadSample').addEventListener('click', () => {
+        const sample = "decision,protected\n1,Female\n1,Female\n1,Female\n0,Female\n1,Male\n1,Male\n1,Male\n0,Male";
+        const blob = new Blob([sample], {type: "text/csv"});
+        const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = "sample.csv";
         link.click();
         URL.revokeObjectURL(link.href);
     });
 
-    // Fairness calculation (same as before)
     function calculateMetrics(rows) {
-        const groups = [...new Set(rows.map(r=>r.protected))];
-        if(groups.length!==2) throw new Error("Need exactly 2 groups");
-        const [g0,g1] = groups;
-        const stats = (g)=>{
-            const gr = rows.filter(r=>r.protected===g);
-            const tot = gr.length;
-            const pos = gr.filter(r=>r.decision===1).length;
-            const rate = tot===0 ? 0 : pos/tot;
-            return {rate, pos, tot};
+        const groups = [...new Set(rows.map(r => r.protected))];
+        if (groups.length !== 2) throw new Error('Need exactly 2 groups');
+        const g0 = groups[0], g1 = groups[1];
+        const getRate = (g) => {
+            const sub = rows.filter(r => r.protected === g);
+            const pos = sub.filter(r => r.decision == 1).length;
+            return pos / sub.length;
         };
-        const s0 = stats(g0), s1 = stats(g1);
-        const spd = s1.rate - s0.rate;
-        const dir = s0.rate===0 ? (s1.rate===0?1:Infinity) : s1.rate/s0.rate;
-        const tprDiff = s1.rate - s0.rate;
-        // chi-square
-        const obs = [[s0.pos, s0.tot-s0.pos],[s1.pos, s1.tot-s1.pos]];
-        const total = s0.tot+s1.tot;
-        const rowTot = [s0.tot, s1.tot];
-        const colTot = [obs[0][0]+obs[1][0], obs[0][1]+obs[1][1]];
-        let chi2=0;
-        for(let i=0;i<2;i++) for(let j=0;j<2;j++) {
-            let exp = (rowTot[i]*colTot[j])/total;
-            if(exp>0) chi2 += Math.pow(obs[i][j]-exp,2)/exp;
+        const r0 = getRate(g0), r1 = getRate(g1);
+        const spd = r1 - r0;
+        const dir = r0 === 0 ? (r1 === 0 ? 1 : Infinity) : r1 / r0;
+        const tprDiff = r1 - r0;
+        // chi-square p-value
+        const counts = [[0,0],[0,0]];
+        rows.forEach(r => {
+            const i = r.protected === g1 ? 1 : 0;
+            const j = r.decision == 1 ? 0 : 1;
+            counts[i][j]++;
+        });
+        const total = counts[0][0]+counts[0][1]+counts[1][0]+counts[1][1];
+        const rowSum = [counts[0][0]+counts[0][1], counts[1][0]+counts[1][1]];
+        const colSum = [counts[0][0]+counts[1][0], counts[0][1]+counts[1][1]];
+        let chi2 = 0;
+        for(let i=0;i<2;i++){
+            for(let j=0;j<2;j++){
+                const expected = (rowSum[i]*colSum[j])/total;
+                if(expected>0) chi2 += Math.pow(counts[i][j]-expected,2)/expected;
+            }
         }
         const p = 1 - chi2CDF(chi2,1);
-        return {spd, dir, tprDiff, pValue:p, group0:g0, group1:g1, prob0:s0.rate, prob1:s1.rate, stats0:s0, stats1:s1};
+        return { spd, dir, tprDiff, p, group0: g0, group1: g1, prob0: r0, prob1: r1 };
     }
-    function chi2CDF(chi2,df){
+
+    function chi2CDF(chi2, df) {
         if(df!==1) return 0.5;
-        const x=Math.sqrt(chi2);
-        const erf=(z)=>{const t=1/(1+0.3275911*Math.abs(z)); const ans=1-((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t*Math.exp(-z*z); return z>=0?ans:-ans;};
+        const x = Math.sqrt(chi2);
+        const erf = (z) => {
+            const t = 1/(1+0.3275911*Math.abs(z));
+            const ans = 1-((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t*Math.exp(-z*z);
+            return z>=0 ? ans : -ans;
+        };
         return 0.5*(1+erf(x/Math.sqrt(2)));
     }
-    function updateChart(g0, r0, g1, r1){
-        const ctx = document.getElementById('fairnessChart').getContext('2d');
-        if(chartInstance) chartInstance.destroy();
-        chartInstance = new Chart(ctx, {type:'bar', data:{labels:[g0,g1], datasets:[{label:'Positive Rate (%)', data:[r0*100, r1*100], backgroundColor:['#3b82f6','#ec489a']}]}, options:{responsive:true, maintainAspectRatio:true, scales:{y:{beginAtZero:true,max:100}}}});
-    }
-    function displayResults(m){
+
+    function displayResults(m) {
         currentMetrics = m;
-        const spdFair = Math.abs(m.spd)<0.1;
-        const dirFair = (typeof m.dir==='number') && (m.dir>=0.8 && m.dir<=1.25);
-        const tprFair = Math.abs(m.tprDiff)<0.1;
-        let verdict,color;
-        if(spdFair && dirFair && tprFair) { verdict="FAIR"; color="fair"; }
-        else if(Math.abs(m.spd)>0.2 || (typeof m.dir==='number' && (m.dir<0.5||m.dir>2)) || Math.abs(m.tprDiff)>0.2) { verdict="UNFAIR – Strong Bias"; color="unfair"; }
-        else { verdict="MODERATELY UNFAIR"; color="slightly-unfair"; }
+        const spdFair = Math.abs(m.spd) < 0.1;
+        const dirFair = (typeof m.dir === 'number') && m.dir >= 0.8 && m.dir <= 1.25;
+        const tprFair = Math.abs(m.tprDiff) < 0.1;
+        let verdict, color;
+        if(spdFair && dirFair && tprFair) { verdict = "FAIR"; color = "fair"; }
+        else if(Math.abs(m.spd)>0.2 || (typeof m.dir==='number' && (m.dir<0.5||m.dir>2)) || Math.abs(m.tprDiff)>0.2) { verdict = "UNFAIR"; color = "unfair"; }
+        else { verdict = "MODERATELY UNFAIR"; color = "slightly-unfair"; }
         document.getElementById('fairnessBadge').innerHTML = verdict;
         document.getElementById('fairnessBadge').className = `fairness-badge ${color}`;
         document.getElementById('spdValue').innerText = m.spd.toFixed(4);
         document.getElementById('dirValue').innerText = (typeof m.dir==='number')?m.dir.toFixed(4):m.dir;
         document.getElementById('tprDiffValue').innerText = m.tprDiff.toFixed(4);
-        document.getElementById('pValue').innerText = m.pValue.toFixed(6);
-        let expl = `Group '${m.group1}' gets ${(m.prob1*100).toFixed(1)}%, '${m.group0}' gets ${(m.prob0*100).toFixed(1)}%. SPD=${m.spd.toFixed(4)}. DIR=${(typeof m.dir==='number')?m.dir.toFixed(4):m.dir}. `;
-        if(m.spd>0) expl+=`Favors '${m.group1}'.`; else if(m.spd<0) expl+=`Favors '${m.group0}'.`; else expl+=`Perfect parity.`;
-        document.getElementById('explanation').innerHTML = expl;
-        document.getElementById('recommendation').innerHTML = verdict==="FAIR" ? "Model appears unbiased ✅" : (verdict.includes("UNFAIR") ? "Bias detected! ⚠️" : "Slight bias present 🔧");
+        document.getElementById('pValue').innerText = m.p.toFixed(6);
+        document.getElementById('explanation').innerHTML = `Group '${m.group1}' gets ${(m.prob1*100).toFixed(1)}%, '${m.group0}' gets ${(m.prob0*100).toFixed(1)}%. SPD: ${m.spd.toFixed(4)}`;
         updateChart(m.group0, m.prob0, m.group1, m.prob1);
         document.getElementById('resultDiv').style.display = 'block';
     }
 
-    document.getElementById('analyzeBtn').addEventListener('click', ()=>{
-        const file = document.getElementById('csvFile').files[0];
-        if(!file) { alert("Select a CSV first"); return; }
-        Papa.parse(file, {header:true, skipEmptyLines:true, complete:(res)=>{
-            try{
-                const rows = res.data;
-                if(rows.length===0) throw new Error("Empty");
-                rows.forEach(r=>{ r.decision=Number(r.decision); if(isNaN(r.decision)) throw new Error("Decision not 0/1"); r.protected=String(r.protected).trim(); });
-                const metrics = calculateMetrics(rows);
-                displayResults(metrics);
-            }catch(e){ alert(e.message); }
-        }, error:()=>alert("Parse error")});
-    });
-
-    // --- Gemini integration ---
-    const geminiBtn = document.getElementById('geminiBtn');
-    const geminiChat = document.getElementById('geminiChat');
-    const geminiInputDiv = document.getElementById('geminiInput');
-    const geminiQuestion = document.getElementById('geminiQuestion');
-    const geminiSend = document.getElementById('geminiSend');
-
-    function addMessage(role, text){
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `chat-message ${role==='user'?'user-msg':'ai-msg'}`;
-        msgDiv.textContent = text;
-        geminiChat.appendChild(msgDiv);
-        geminiChat.scrollTop = geminiChat.scrollHeight;
+    function updateChart(g0, r0, g1, r1) {
+        const ctx = document.getElementById('fairnessChart').getContext('2d');
+        if(chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: [g0, g1], datasets: [{ label: 'Positive Rate (%)', data: [r0*100, r1*100], backgroundColor: ['#3b82f6','#ec489a'] }] },
+            options: { responsive: true, scales: { y: { max: 100 } } }
+        });
     }
 
-    geminiBtn.addEventListener('click', async()=>{
-        if(!currentMetrics){ alert("First analyze a CSV."); return; }
-        geminiChat.style.display = 'block';
-        geminiInputDiv.style.display = 'flex';
-        geminiBtn.disabled = true;
-        geminiBtn.textContent = '⏳ Asking Gemini...';
-        addMessage('ai', '🤔 Analyzing fairness...');
-        try{
-            const res = await fetch(`${BACKEND_URL}/api/explain`, {
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({
-                    spd: currentMetrics.spd,
-                    dir: currentMetrics.dir,
-                    tprDiff: currentMetrics.tprDiff,
-                    pValue: currentMetrics.pValue,
-                    group0: currentMetrics.group0,
-                    group1: currentMetrics.group1,
-                    prob0: currentMetrics.prob0,
-                    prob1: currentMetrics.prob1
-                })
-            });
-            const data = await res.json();
-            geminiChat.innerHTML = '';
-            addMessage('ai', data.reply);
-        }catch(err){
-            geminiChat.innerHTML = '';
-            addMessage('ai', '⚠️ Backend unreachable. Did you deploy the proxy and set the correct URL?');
-        }finally{
-            geminiBtn.disabled = false;
-            geminiBtn.textContent = '💬 Ask Gemini AI';
-        }
+    document.getElementById('csvFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        Papa.parse(file, {
+            header: true,
+            complete: function(results) {
+                try {
+                    const rows = results.data;
+                    if (rows.length === 0) throw new Error('Empty CSV');
+                    const metrics = calculateMetrics(rows);
+                    displayResults(metrics);
+                } catch(err) { alert(err.message); }
+            }
+        });
     });
 
-    geminiSend.addEventListener('click', async()=>{
-        const q = geminiQuestion.value.trim();
-        if(!q) return;
+    // Mock Gemini AI (no API key needed)
+    const geminiBtn = document.getElementById('geminiBtn');
+    const chatDiv = document.getElementById('chatMessages');
+    const chatInputDiv = document.querySelector('.chat-input');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    function addMessage(role, text) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = role === 'user' ? 'user-msg' : 'ai-msg';
+        msgDiv.textContent = text;
+        chatDiv.appendChild(msgDiv);
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+    }
+
+    geminiBtn.addEventListener('click', () => {
+        if (!currentMetrics) { alert('Analyze a CSV first'); return; }
+        chatDiv.style.display = 'block';
+        chatInputDiv.style.display = 'flex';
+        geminiBtn.disabled = true;
+        geminiBtn.textContent = 'Gemini (mock) ...';
+        setTimeout(() => {
+            const mockReply = `Based on the metrics: SPD = ${currentMetrics.spd.toFixed(3)}, DIR = ${(typeof currentMetrics.dir === 'number' ? currentMetrics.dir.toFixed(3) : currentMetrics.dir)}. The model is ${document.getElementById('fairnessBadge').innerText.toLowerCase()}. Recommendation: ${currentMetrics.spd > 0.1 ? 'Collect more balanced data.' : 'Maintain current fairness practices.'}`;
+            addMessage('ai', mockReply);
+            geminiBtn.disabled = false;
+            geminiBtn.textContent = '💬 Ask Gemini AI (Mock)';
+        }, 500);
+        addMessage('ai', 'Thinking... (mock AI response)');
+    });
+
+    sendBtn.addEventListener('click', () => {
+        const q = chatInput.value.trim();
+        if (!q) return;
         addMessage('user', q);
-        geminiQuestion.value = '';
-        addMessage('ai', '⏳ thinking...');
-        try{
-            const res = await fetch(`${BACKEND_URL}/api/followup`, {
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({ question: q })
-            });
-            const data = await res.json();
-            geminiChat.removeChild(geminiChat.lastChild);
-            addMessage('ai', data.reply);
-        }catch(err){
-            geminiChat.removeChild(geminiChat.lastChild);
-            addMessage('ai', 'Error getting response.');
-        }
+        chatInput.value = '';
+        addMessage('ai', 'This is a mock AI. In production, it would call Google Gemini API.');
     });
 </script>
 </body>
